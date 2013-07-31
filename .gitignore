@@ -2,3 +2,8 @@ target
 *.class
 *.iml
 tmp
+
+# Package Files #
+*.jar
+*.war
+*.ear
