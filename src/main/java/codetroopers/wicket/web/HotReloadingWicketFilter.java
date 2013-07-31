@@ -103,7 +103,7 @@ public class HotReloadingWicketFilter extends WicketFilter {
                 destroy();
                 rebuildClassLoader();
                 try {
-                    HotReloadingWicketFilter.super.init(filterConfig);
+                    HotReloadingWicketFilter.super.init(isServlet, filterConfig);
                 } catch (ServletException e) {
                     throw new RuntimeException(e);
                 }
