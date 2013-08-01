@@ -61,8 +61,7 @@ public class Start {
 
         server.setHandler(bb);
         
-        // Reload We set the source location to src/test/java as our classes in this examples are in test sources
-        System.setProperty("restx.sourceRoots", "src/test/java");
+        setAutoReloadProperties();
         try {
             System.out.println(">>> STARTING EMBEDDED JETTY SERVER, PRESS ANY KEY TO STOP");
             server.start();
@@ -74,6 +73,14 @@ public class Start {
             e.printStackTrace();
             System.exit(1);
         }
+    }
+
+    private static void setAutoReloadProperties() {
+        // Reload We set autoreload to true
+        System.setProperty("wicket.hotreload.auto", "true");
+        // Reload We set the source location to src/test/java as our classes in this examples are in test sources
+        System.setProperty("wicket.hotreload.sourceRoots", "src/test/java");
+        System.setProperty("wicket.hotreload.rootPackage", "codetroopers");
     }
 }
 

@@ -16,47 +16,46 @@
  */
 package codetroopers.wicket.web;
 
-import static com.google.common.collect.Iterables.*;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import codetroopers.wicket.restx.CompilationFinishedEvent;
+import codetroopers.wicket.restx.CompilationManager;
+import codetroopers.wicket.restx.HotReloadingClassLoader;
+import com.google.common.base.Joiner;
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
+import org.apache.wicket.protocol.http.WicketFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
-
-import org.apache.wicket.protocol.http.WicketFilter;
-
-import codetroopers.wicket.restx.CompilationFinishedEvent;
-import codetroopers.wicket.restx.CompilationManager;
-import codetroopers.wicket.restx.HotReloadingClassLoader;
-import codetroopers.wicket.restx.MoreFiles;
-
-import com.google.common.base.Splitter;
-import com.google.common.eventbus.EventBus;
-import com.google.common.eventbus.Subscribe;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 
 
 /**
  * Simple wicket filter allowing hot reload and autocompile of sources à la play!
  * Proof of concept
- * 
+ *
  * TODO :
  *  # extract parameters through system property
  *  # rename restx.* parameters to wicket.*
  *  # use wicket application mode to trigger incremental compile only when needed
  *  # test test test test
- * 
+ *
  * @author <a href="mailto:cedric@gatay.fr">Cedric Gatay</a>
  */
 public class HotReloadingWicketFilter extends WicketFilter {
+    private static final Logger LOGGER = LoggerFactory.getLogger(HotReloadingWicketFilter.class);
+
     private final CompilationManager compilationManager;
     private final EventBus eventBus;
+    private final boolean hotReloadEnabled;
+    private final boolean watchCompileEnabled;
+    private final boolean autoCompileEnabled;
     private HotReloadingClassLoader reloadingClassLoader;
 
     /**
@@ -64,13 +63,33 @@ public class HotReloadingWicketFilter extends WicketFilter {
      */
     public HotReloadingWicketFilter() {
         eventBus = new EventBus();
-        compilationManager = CompilationManagerHelper.newAppCompilationManager(eventBus);
-        rebuildClassLoader();
+        hotReloadEnabled = CompilationManagerHelper.isHotReloadEnabled();
+        if (hotReloadEnabled) {
+            compilationManager = CompilationManagerHelper.newAppCompilationManager(eventBus);
+            rebuildClassLoader();
+            watchCompileEnabled = CompilationManagerHelper.isWatchCompileEnabled();
+            autoCompileEnabled = CompilationManagerHelper.isAutoCompileEnabled();
+            if (watchCompileEnabled) {
+                compilationManager.startAutoCompile();
+            }
+        } else {
+            compilationManager = null;
+            watchCompileEnabled = false;
+            autoCompileEnabled = false;
+        }
+    }
+
+    @Override
+    public void destroy() {
+        if (compilationManager != null) {
+            compilationManager.stopAutoCompile();
+        }
+        super.destroy();
     }
 
     private void rebuildClassLoader() {
-        reloadingClassLoader = new HotReloadingClassLoader(getClass().getClassLoader(), "codetroopers")
-        {
+        reloadingClassLoader = new HotReloadingClassLoader(getClass().getClassLoader(),
+                                                           CompilationManagerHelper.getRootPackageName()) {
             @Override
             protected InputStream getInputStream(String path) {
                 try {
@@ -87,7 +106,10 @@ public class HotReloadingWicketFilter extends WicketFilter {
      */
     @Override
     protected ClassLoader getClassLoader() {
-        return reloadingClassLoader;
+        if (hotReloadEnabled) {
+            return reloadingClassLoader;
+        }
+        return super.getClassLoader();
     }
 
     /**
@@ -96,26 +118,67 @@ public class HotReloadingWicketFilter extends WicketFilter {
     @Override
     public void init(final boolean isServlet, final FilterConfig filterConfig)
             throws ServletException {
-        //we need a better way of doing this, it resets the entire application !
-        eventBus.register(new Object() {
-            @Subscribe
-            public void onEvent(CompilationFinishedEvent event) {
-                destroy();
-                rebuildClassLoader();
-                try {
-                    HotReloadingWicketFilter.super.init(isServlet, filterConfig);
-                } catch (ServletException e) {
-                    throw new RuntimeException(e);
+        if (hotReloadEnabled) {
+            //we need a better way of doing this, it resets the entire application !
+            eventBus.register(new Object() {
+                @Subscribe
+                public void onEvent(CompilationFinishedEvent event) {
+                    destroy();
+                    rebuildClassLoader();
+                    try {
+                        HotReloadingWicketFilter.super.init(isServlet, filterConfig);
+                    } catch (ServletException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
-            }
-        });
+            });
+        }
+        displayHotReloadUsageInfo();
         super.init(isServlet, filterConfig);
+    }
+
+    private void displayHotReloadUsageInfo() {
+        final String delimiter = "\n###################################################################";
+        StringBuilder info =
+                new StringBuilder(delimiter)
+                          .append("\n#  You are using a WicketFilter allowing hot reload and auto compilation of sources.");
+        if (hotReloadEnabled) {
+            info.append("\n#  Hot reload is currently enabled for classes in the package '")
+                    .append(CompilationManagerHelper.getRootPackageName()).append("'");
+            info.append("\n#  Sources are scanned in the following directories '")
+                    .append(Joiner.on(',').join(compilationManager.getSourceRoots())).append("'");
+            if (autoCompileEnabled) {
+                info.append("\n#  Compilation will be performed if necessary every time a http request is made");
+            } else if (watchCompileEnabled) {
+                info.append("\n#  Compilation will be performed automatically as you change sources.");
+            } 
+        }else{
+            info.append("\n#  to use it you need to set a bunch of system properties for your environment");
+            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_AUTO)
+                    .append(" (true|false) to enable auto compile when your application is accessed");
+            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_WATCH)
+                    .append(" (true|false) to enable auto compile when sources are modified");
+            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_ENABLED)
+                    .append(" (true|false) to enable hot reloading without auto compile");
+            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_ROOTPKG)
+                    .append(" the name of the root package where reloading should be active");
+            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_SOURCES)
+                    .append(" comma separated list of directories containing the sources you want to compile");
+            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_TARGET)
+                    .append(" directory used as compilation target (defaults to tmp/classes)");
+        }
+        info.append(delimiter);
+        LOGGER.info(info.toString());
     }
 
     @Override
     public void doFilter(final ServletRequest request, final ServletResponse response, final FilterChain chain)
             throws IOException, ServletException {
-        compilationManager.incrementalCompile();
+        if (autoCompileEnabled) {
+            compilationManager.incrementalCompile();
+        } else if (watchCompileEnabled) {
+            compilationManager.awaitAutoCompile();
+        }
         super.doFilter(request, response, chain);
     }
 }
