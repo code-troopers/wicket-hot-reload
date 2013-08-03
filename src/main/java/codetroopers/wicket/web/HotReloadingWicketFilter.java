@@ -18,6 +18,7 @@ package codetroopers.wicket.web;
 
 import codetroopers.wicket.restx.CompilationFinishedEvent;
 import codetroopers.wicket.restx.CompilationManager;
+import codetroopers.wicket.HotReloadingClassResolver;
 import codetroopers.wicket.restx.HotReloadingClassLoader;
 import com.google.common.base.Joiner;
 import com.google.common.eventbus.EventBus;
@@ -41,8 +42,6 @@ import java.nio.file.Files;
  * Proof of concept
  *
  * TODO :
- *  # extract parameters through system property
- *  # rename restx.* parameters to wicket.*
  *  # use wicket application mode to trigger incremental compile only when needed
  *  # test test test test
  *
@@ -125,25 +124,45 @@ public class HotReloadingWicketFilter extends WicketFilter {
                 @Subscribe
                 public void onEvent(CompilationFinishedEvent event) {
                     LOGGER.info("Rebuilt the following sources : {}", Joiner.on(",").join(event.getAffectedSources()));
-                    destroy();
                     rebuildClassLoader();
-                    try {
-                        HotReloadingWicketFilter.super.init(isServlet, filterConfig);
-                    } catch (ServletException e) {
-                        throw new RuntimeException(e);
-                    }
+                    // TODO restarts the application, we need to detect if a "core" class has been rebuilt (homepage for example)
+                    //destroy();
+                    //try {
+                    //    HotReloadingWicketFilter.super.init(isServlet, filterConfig);
+                    //} catch (ServletException e) {
+                    //    throw new RuntimeException(e);
+                    //}
+                    resetClassResolver();
                 }
             });
         }
         displayHotReloadUsageInfo();
         super.init(isServlet, filterConfig);
+        if (hotReloadEnabled){
+            resetClassResolver();
+        }
+    }
+
+    /**
+     * Reset the class resolver, it removes stale classes.
+     * Optimization is possible by removing from the map only changed classes
+     *
+     * NOTICE :  as long as we don't touch the HomePage, this seems to work
+     */
+    private void resetClassResolver() {
+        if (getApplication() != null) {
+            if (LOGGER.isDebugEnabled()){
+                LOGGER.debug("Resetting the Application's ClassResolver");
+            }
+            getApplication().getApplicationSettings().setClassResolver(new HotReloadingClassResolver());
+        }
     }
 
     private void displayHotReloadUsageInfo() {
         final String delimiter = "\n###################################################################";
         StringBuilder info =
                 new StringBuilder(delimiter)
-                          .append("\n#  You are using a WicketFilter allowing hot reload and auto compilation of sources.");
+                        .append("\n#  You are using a WicketFilter allowing hot reload and auto compilation of sources.");
         if (hotReloadEnabled) {
             info.append("\n#  Hot reload is currently enabled for classes in the package '")
                     .append(CompilationManagerHelper.getRootPackageName()).append("'");
@@ -153,8 +172,8 @@ public class HotReloadingWicketFilter extends WicketFilter {
                 info.append("\n#  Compilation will be performed if necessary every time a http request is made");
             } else if (watchCompileEnabled) {
                 info.append("\n#  Compilation will be performed automatically as you change sources.");
-            } 
-        }else{
+            }
+        } else {
             info.append("\n#  to use it you need to set a bunch of system properties for your environment");
             info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_AUTO)
                     .append(" (true|false) to enable auto compile when your application is accessed");

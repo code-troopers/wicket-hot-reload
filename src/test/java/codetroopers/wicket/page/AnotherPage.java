@@ -1,5 +1,6 @@
 package codetroopers.wicket.page;
 
+import codetroopers.wicket.page.panel.SimplePanel;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.AjaxSelfUpdatingTimerBehavior;
 import org.apache.wicket.markup.html.WebPage;
@@ -21,6 +22,7 @@ public class AnotherPage extends WebPage {
         super.onInitialize();
         final Label label = new Label("changingLabel", new PropertyModel<Long>(this, "timeTick"));
         add(label);
+        //to test vary the duration for example (you need to refresh the page)
         label.add(new AjaxSelfUpdatingTimerBehavior(Duration.seconds(2)){
             @Override
             protected void onPostProcessTarget(final AjaxRequestTarget target) {
@@ -28,5 +30,6 @@ public class AnotherPage extends WebPage {
                 timeTick = System.currentTimeMillis();
             }
         });
+        add(new SimplePanel("simplePanel"));
     }
 }

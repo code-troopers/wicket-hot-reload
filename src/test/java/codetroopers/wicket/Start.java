@@ -80,7 +80,7 @@ public class Start {
         System.setProperty("wicket.hotreload.auto", "true");
         // Reload We set the source location to src/test/java as our classes in this examples are in test sources
         System.setProperty("wicket.hotreload.sourceRoots", "src/test/java");
-        System.setProperty("wicket.hotreload.rootPackage", "codetroopers");
+        System.setProperty("wicket.hotreload.rootPackage", "codetroopers.wicket.page");
     }
 }
 
