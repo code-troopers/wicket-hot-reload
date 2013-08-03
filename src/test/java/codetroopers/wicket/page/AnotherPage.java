@@ -4,34 +4,28 @@ import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.AjaxSelfUpdatingTimerBehavior;
 import org.apache.wicket.markup.html.WebPage;
 import org.apache.wicket.markup.html.basic.Label;
-import org.apache.wicket.model.AbstractReadOnlyModel;
+import org.apache.wicket.model.PropertyModel;
 import org.apache.wicket.util.time.Duration;
 
 /**
  * @author cgatay
  */
-public class StartupPage extends WebPage {
-    int i;
-    public StartupPage() {
-        i = 0;
+public class AnotherPage extends WebPage {
+    Long timeTick;
+
+    public AnotherPage() {
     }
 
     @Override
     protected void onInitialize() {
         super.onInitialize();
-        final Label label = new Label("hello", new AbstractReadOnlyModel<String>() {
-            @Override
-            public String getObject() {
-                return "Hello Reload " + i;
-            }
-        });
+        final Label label = new Label("changingLabel", new PropertyModel<Long>(this, "timeTick"));
         add(label);
-        
-        label.add(new AjaxSelfUpdatingTimerBehavior(Duration.seconds(15)){
+        label.add(new AjaxSelfUpdatingTimerBehavior(Duration.seconds(2)){
             @Override
             protected void onPostProcessTarget(final AjaxRequestTarget target) {
-                i++;
                 super.onPostProcessTarget(target);
+                timeTick = System.currentTimeMillis();
             }
         });
     }

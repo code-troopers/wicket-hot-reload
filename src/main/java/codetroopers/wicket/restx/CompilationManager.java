@@ -415,7 +415,9 @@ public class CompilationManager {
                 saveHashes();
 
                 logger.info("compilation finished: {} sources compiled in {}", sources.size(), stopwatch.stop());
-                eventBus.post(new CompilationFinishedEvent(this, DateTime.now()));
+                final CompilationFinishedEvent event = new CompilationFinishedEvent(this, DateTime.now());
+                event.setAffectedSources(sources);
+                eventBus.post(event);
                 for (Diagnostic<?> d : diagnostics.getDiagnostics()) {
                     logger.debug("{}", d);
                 }

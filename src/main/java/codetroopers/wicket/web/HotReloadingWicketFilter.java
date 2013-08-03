@@ -120,9 +120,11 @@ public class HotReloadingWicketFilter extends WicketFilter {
             throws ServletException {
         if (hotReloadEnabled) {
             //we need a better way of doing this, it resets the entire application !
+            // we need to be able to remove classes from the application's classloader without resetting the entire app
             eventBus.register(new Object() {
                 @Subscribe
                 public void onEvent(CompilationFinishedEvent event) {
+                    LOGGER.info("Rebuilt the following sources : {}", Joiner.on(",").join(event.getAffectedSources()));
                     destroy();
                     rebuildClassLoader();
                     try {
