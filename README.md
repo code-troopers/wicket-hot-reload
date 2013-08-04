@@ -11,8 +11,8 @@ Proof of concept of autocompilation and reloading of Wicket classes. You can run
 If you edit the `AnotherPage` class, you should see in your logs that it is compiled and reloaded. 
 To see the change you will need to refresh your browser, you can do the same with `SimplePanel`.
 
-If you edit the `StartupPage` class, it will not work (but it will when I will find out how) because this is the HomePage of your application.
-The actual workaround is resetting the `Application` class, but it is barely acceptable, so it is disabled.
+If you edit the `StartupPage` class, it will work because the class is loaded using the special method `HotReloadingUtils.reloadableHomePage()`.
+This method uses the correct class loader to load the home page class, and thus, can reload it properly.
 
 # How to use it
 
@@ -42,6 +42,14 @@ You will also need to update your web.xml to use the `HotReloadingWicketFilter` 
             <param-value>your.application.class.name</param-value>
         </init-param>
     </filter>
+    
+If you want reloading of the HomePage class as well, you will need to write your `getHomePage()` as follows :
+
+    @Override
+    public Class<? extends Page> getHomePage() {
+        //need to use the special method to allow reloading of the homePage class
+        return HotReloadingUtils.reloadableHomePage(this, StartupPage.class);
+    }
     
 # Bug tracker
 

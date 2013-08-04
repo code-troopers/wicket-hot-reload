@@ -67,12 +67,12 @@ public class HotReloadingWicketFilter extends WicketFilter {
      */
     public HotReloadingWicketFilter() {
         eventBus = new EventBus();
-        hotReloadEnabled = CompilationManagerHelper.isHotReloadEnabled();
+        hotReloadEnabled = HotReloadingUtils.isHotReloadEnabled();
         if (hotReloadEnabled) {
-            compilationManager = CompilationManagerHelper.newAppCompilationManager(eventBus);
+            compilationManager = HotReloadingUtils.newAppCompilationManager(eventBus);
             rebuildClassLoader();
-            watchCompileEnabled = CompilationManagerHelper.isWatchCompileEnabled();
-            autoCompileEnabled = CompilationManagerHelper.isAutoCompileEnabled();
+            watchCompileEnabled = HotReloadingUtils.isWatchCompileEnabled();
+            autoCompileEnabled = HotReloadingUtils.isAutoCompileEnabled();
             if (watchCompileEnabled) {
                 compilationManager.startAutoCompile();
             }
@@ -93,7 +93,7 @@ public class HotReloadingWicketFilter extends WicketFilter {
 
     private void rebuildClassLoader() {
         reloadingClassLoader = new HotReloadingClassLoader(getClass().getClassLoader(),
-                                                           CompilationManagerHelper.getRootPackageName()) {
+                                                           HotReloadingUtils.getRootPackageName()) {
             @Override
             protected InputStream getInputStream(String path) {
                 try {
@@ -123,20 +123,11 @@ public class HotReloadingWicketFilter extends WicketFilter {
     public void init(final boolean isServlet, final FilterConfig filterConfig)
             throws ServletException {
         if (hotReloadEnabled) {
-            //we need a better way of doing this, it resets the entire application !
-            // we need to be able to remove classes from the application's classloader without resetting the entire app
             eventBus.register(new Object() {
                 @Subscribe
                 public void onEvent(CompilationFinishedEvent event) {
                     LOGGER.info("Rebuilt the following sources : {}", Joiner.on(",").join(event.getAffectedSources()));
                     rebuildClassLoader();
-                    // TODO restarts the application, we need to detect if a "core" class has been rebuilt (homepage for example)
-                    //destroy();
-                    //try {
-                    //    HotReloadingWicketFilter.super.init(isServlet, filterConfig);
-                    //} catch (ServletException e) {
-                    //    throw new RuntimeException(e);
-                    //}
                     resetClassAndResourcesCaches();
                 }
             });
@@ -176,7 +167,7 @@ public class HotReloadingWicketFilter extends WicketFilter {
                         .append("\n#  You are using a WicketFilter allowing hot reload and auto compilation of sources.");
         if (hotReloadEnabled) {
             info.append("\n#  Hot reload is currently enabled for classes in the package '")
-                    .append(CompilationManagerHelper.getRootPackageName()).append("'");
+                    .append(HotReloadingUtils.getRootPackageName()).append("'");
             info.append("\n#  Sources are scanned in the following directories '")
                     .append(Joiner.on(',').join(compilationManager.getSourceRoots())).append("'");
             if (autoCompileEnabled) {
@@ -186,17 +177,17 @@ public class HotReloadingWicketFilter extends WicketFilter {
             }
         } else {
             info.append("\n#  to use it you need to set a bunch of system properties for your environment");
-            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_AUTO)
+            info.append("\n#  \t * ").append(HotReloadingUtils.KEY_AUTO)
                     .append(" (true|false) to enable auto compile when your application is accessed");
-            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_WATCH)
+            info.append("\n#  \t * ").append(HotReloadingUtils.KEY_WATCH)
                     .append(" (true|false) to enable auto compile when sources are modified");
-            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_ENABLED)
+            info.append("\n#  \t * ").append(HotReloadingUtils.KEY_ENABLED)
                     .append(" (true|false) to enable hot reloading without auto compile");
-            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_ROOTPKG)
+            info.append("\n#  \t * ").append(HotReloadingUtils.KEY_ROOTPKG)
                     .append(" the name of the root package where reloading should be active");
-            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_SOURCES)
+            info.append("\n#  \t * ").append(HotReloadingUtils.KEY_SOURCES)
                     .append(" comma separated list of directories containing the sources you want to compile");
-            info.append("\n#  \t * ").append(CompilationManagerHelper.KEY_TARGET)
+            info.append("\n#  \t * ").append(HotReloadingUtils.KEY_TARGET)
                     .append(" directory used as compilation target (defaults to tmp/classes)");
         }
         info.append(delimiter);
