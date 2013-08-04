@@ -1,4 +1,4 @@
-# Wicket Hot reload
+# Wicket Hot reload [![Build Status](https://buildhive.cloudbees.com/job/code-troopers/job/wicket-hot-reload/badge/icon)](https://buildhive.cloudbees.com/job/code-troopers/job/wicket-hot-reload/)
 
 [Apache Wicket](http://wicket.apache.org) is a Java Web framework providing clean separation between markup and logic.
 
@@ -61,6 +61,8 @@ https://github.com/code-troopers/wicket-hot-reload/issues
 # Special notes
 
 The implementation provided here is open for pull request or further integration into WicketStuff.
+
+Thanks to Cloudbees Buildhive for providing a free Jenkins instance.
 
 Thanks to Xavier Hanin for providing the initial implementation of this in his project [Rest.x](http://restx.io).
 Thanks to [PlayFramework!](http://playframework.org) for the initial implementation
