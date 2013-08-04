@@ -21,9 +21,13 @@ import codetroopers.wicket.restx.CompilationManager;
 import codetroopers.wicket.HotReloadingClassResolver;
 import codetroopers.wicket.restx.HotReloadingClassLoader;
 import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import org.apache.wicket.core.util.resource.ClassPathResourceFinder;
+import org.apache.wicket.protocol.http.WebApplication;
 import org.apache.wicket.protocol.http.WicketFilter;
+import org.apache.wicket.util.file.IResourceFinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +39,7 @@ import javax.servlet.ServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.List;
 
 
 /**
@@ -132,14 +137,14 @@ public class HotReloadingWicketFilter extends WicketFilter {
                     //} catch (ServletException e) {
                     //    throw new RuntimeException(e);
                     //}
-                    resetClassResolver();
+                    resetClassAndResourcesCaches();
                 }
             });
         }
         displayHotReloadUsageInfo();
         super.init(isServlet, filterConfig);
-        if (hotReloadEnabled){
-            resetClassResolver();
+        if (hotReloadEnabled) {
+            resetClassAndResourcesCaches();
         }
     }
 
@@ -149,12 +154,18 @@ public class HotReloadingWicketFilter extends WicketFilter {
      *
      * NOTICE :  as long as we don't touch the HomePage, this seems to work
      */
-    private void resetClassResolver() {
-        if (getApplication() != null) {
-            if (LOGGER.isDebugEnabled()){
-                LOGGER.debug("Resetting the Application's ClassResolver");
+    private void resetClassAndResourcesCaches() {
+        final WebApplication application = getApplication();
+        if (application != null) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Resetting the Application's ClassResolver and Resource Finders");
             }
-            getApplication().getApplicationSettings().setClassResolver(new HotReloadingClassResolver());
+            application.getApplicationSettings().setClassResolver(new HotReloadingClassResolver());
+            //we reset the resourceStreamLocator cache by recreating resource finders
+            List<IResourceFinder> resourceFinders = Lists.newArrayList();
+            resourceFinders.add(new org.apache.wicket.util.file.Path(compilationManager.getDestination().toString()));
+            resourceFinders.add(new ClassPathResourceFinder(""));
+            application.getResourceSettings().setResourceFinders(resourceFinders);
         }
     }
 

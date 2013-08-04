@@ -8,14 +8,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.file.Path;
 
 /**
  * The {@link ClassLoader} for hot reloading.
- * 
+ *
  * @author higa
  * @since 1.0.0
  */
-public class HotReloadingClassLoader extends ClassLoader {
+public abstract class HotReloadingClassLoader extends ClassLoader {
     private static final Logger LOGGER = LoggerFactory.getLogger(HotReloadingClassLoader.class);
     /**
      * The root package name.
@@ -79,7 +80,7 @@ public class HotReloadingClassLoader extends ClassLoader {
 
     /**
      * Defines the class.
-     * 
+     *
      * @param className
      *            the class name
      * @param resolve
@@ -133,19 +134,7 @@ public class HotReloadingClassLoader extends ClassLoader {
      *            the path
      * @return the input stream
      */
-    protected InputStream getInputStream(String path) {
-        try {
-            URL url = getResource(path);
-            if (url == null) {
-                return null;
-            }
-            URLConnection connection = url.openConnection();
-            connection.setUseCaches(false);
-            return connection.getInputStream();
-        } catch (IOException ignore) {
-            return null;
-        }
-    }
+    protected abstract InputStream getInputStream(String path);
 
     @Override
     protected Class<?> findClass(final String name) throws ClassNotFoundException {
