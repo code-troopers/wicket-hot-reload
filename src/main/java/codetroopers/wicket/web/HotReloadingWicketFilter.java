@@ -21,6 +21,7 @@ import codetroopers.wicket.restx.CompilationManager;
 import codetroopers.wicket.HotReloadingClassResolver;
 import codetroopers.wicket.restx.HotReloadingClassLoader;
 import com.google.common.base.Joiner;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
@@ -28,6 +29,7 @@ import org.apache.wicket.core.util.resource.ClassPathResourceFinder;
 import org.apache.wicket.protocol.http.WebApplication;
 import org.apache.wicket.protocol.http.WicketFilter;
 import org.apache.wicket.util.file.IResourceFinder;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +69,7 @@ public class HotReloadingWicketFilter extends WicketFilter {
      */
     public HotReloadingWicketFilter() {
         eventBus = new EventBus();
+        //TODO things are becoming messy here, need a settings parser
         hotReloadEnabled = HotReloadingUtils.isHotReloadEnabled();
         if (hotReloadEnabled) {
             compilationManager = HotReloadingUtils.newAppCompilationManager(eventBus);
@@ -75,6 +78,8 @@ public class HotReloadingWicketFilter extends WicketFilter {
             autoCompileEnabled = HotReloadingUtils.isAutoCompileEnabled();
             if (watchCompileEnabled) {
                 compilationManager.startAutoCompile();
+            }else if (!autoCompileEnabled){
+                compilationManager.startWatchCompiledClasses();
             }
         } else {
             compilationManager = null;
@@ -87,6 +92,7 @@ public class HotReloadingWicketFilter extends WicketFilter {
     public void destroy() {
         if (compilationManager != null) {
             compilationManager.stopAutoCompile();
+            compilationManager.stopWatchCompiledClasses();
         }
         super.destroy();
     }
@@ -126,7 +132,10 @@ public class HotReloadingWicketFilter extends WicketFilter {
             eventBus.register(new Object() {
                 @Subscribe
                 public void onEvent(CompilationFinishedEvent event) {
-                    LOGGER.info("Rebuilt the following sources : {}", Joiner.on(",").join(event.getAffectedSources()));
+                    if (event.getAffectedSources() != null) {
+                        LOGGER.info("Rebuilt the following sources : {}",
+                                    Joiner.on(",").join(event.getAffectedSources()));
+                    }
                     rebuildClassLoader();
                     resetClassAndResourcesCaches();
                 }
@@ -201,6 +210,8 @@ public class HotReloadingWicketFilter extends WicketFilter {
             compilationManager.incrementalCompile();
         } else if (watchCompileEnabled) {
             compilationManager.awaitAutoCompile();
+        } else if (hotReloadEnabled) {
+            
         }
         super.doFilter(request, response, chain);
     }

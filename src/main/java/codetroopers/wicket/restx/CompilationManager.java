@@ -32,6 +32,7 @@ import java.nio.file.WatchEvent;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -87,8 +88,9 @@ public class CompilationManager {
 
     private ExecutorService watcherExecutor;
 
-    private volatile boolean compiling;
+    private ExecutorService compiledClassesExecutor;
 
+    private volatile boolean compiling;
     // these parameters should be overridable, at least with system properties
     private final long compilationTimeout = 60; // in seconds
     private final int autoCompileQuietPeriod = 50; // ms
@@ -123,7 +125,13 @@ public class CompilationManager {
                 if (!source.toFile().isFile()) {
                     return;
                 }
-                if (isSource(source)) {
+                if (isClass(source)){
+                    //TODO beautify this, the event is fired multiple times (as many times as the number of changed files)
+                    final CompilationFinishedEvent finishedEvent =
+                            new CompilationFinishedEvent(CompilationManager.this, DateTime.now());
+                    finishedEvent.setAffectedSources(Collections.singleton(source));
+                    getEventBus().post(finishedEvent);
+                }else if (isSource(source)) {
                     if (kind == StandardWatchEventKinds.ENTRY_MODIFY
                             || kind == StandardWatchEventKinds.ENTRY_CREATE) {
                         if (!queueCompile(source)) {
@@ -229,6 +237,25 @@ public class CompilationManager {
             }
         }
     }
+    
+    public void startWatchCompiledClasses() {
+        synchronized (this) {
+            if (compiledClassesExecutor == null) {
+                compiledClassesExecutor = Executors.newCachedThreadPool();
+                MoreFiles.watch(destination, eventBus, compiledClassesExecutor);
+            }
+        }
+    }
+
+    public void stopWatchCompiledClasses() {
+        synchronized (this) {
+            if (compiledClassesExecutor!= null) {
+                compiledClassesExecutor.shutdownNow();
+                compiledClassesExecutor = null;
+            }
+        }
+    }
+
 
     public void awaitAutoCompile() {
         try {
@@ -301,6 +328,10 @@ public class CompilationManager {
 
     private boolean isSource(Path file) {
         return file.toString().endsWith(".java");
+    }
+    
+    private boolean isClass(Path file) {
+        return file.toString().endsWith(".class");
     }
 
     /**

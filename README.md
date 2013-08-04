@@ -23,7 +23,7 @@ add it as a dependency to your project and set up the following system propertie
   
   * wicket.hotreload.watch : (true|false) to enable auto compile when sources are modified
   
-  * wicket.hotreload.enabled : (true|false) to enable hot reloading without auto compile
+  * wicket.hotreload.enabled : (true|false) to enable hot reloading without auto compile (watching the `targetClasses` directory)
   
   * wicket.hotreload.rootPackage : the name of the root package where reloading should be active
   

@@ -1,5 +1,6 @@
 package codetroopers.wicket;
 
+import codetroopers.wicket.web.HotReloadingUtils;
 import org.apache.wicket.util.time.Duration;
 import org.eclipse.jetty.http.ssl.SslContextFactory;
 import org.eclipse.jetty.server.Server;
@@ -61,7 +62,11 @@ public class Start {
 
         server.setHandler(bb);
         
+        //TOGGLE between these two method to experiment different reloading strategies
+        // Autoreload builds and reload the classes automatically
         setAutoReloadProperties();
+        // WatchClasses watch the target dir for reloading (build with your IDE or maven)
+        //setWatchClassesProperties();
         try {
             System.out.println(">>> STARTING EMBEDDED JETTY SERVER, PRESS ANY KEY TO STOP");
             server.start();
@@ -77,10 +82,18 @@ public class Start {
 
     private static void setAutoReloadProperties() {
         // Reload We set autoreload to true
-        System.setProperty("wicket.hotreload.auto", "true");
+        System.setProperty(HotReloadingUtils.KEY_AUTO, "true");
         // Reload We set the source location to src/test/java as our classes in this examples are in test sources
-        System.setProperty("wicket.hotreload.sourceRoots", "src/test/java");
-        System.setProperty("wicket.hotreload.rootPackage", "codetroopers.wicket.page");
+        System.setProperty(HotReloadingUtils.KEY_SOURCES, "src/test/java");
+        System.setProperty(HotReloadingUtils.KEY_ROOTPKG, "codetroopers.wicket.page");
+    }
+    
+    private static void setWatchClassesProperties() {
+        System.setProperty(HotReloadingUtils.KEY_ENABLED, "true");
+        // Reload We set the source location to src/test/java as our classes in this examples are in test sources
+        //System.setProperty("wicket.hotreload.sourceRoots", "src/test/java");
+        System.setProperty(HotReloadingUtils.KEY_TARGET, "target/test-classes");
+        System.setProperty(HotReloadingUtils.KEY_ROOTPKG, "codetroopers.wicket.page");
     }
 }
 
